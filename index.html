@@ -92,6 +92,7 @@ const $ = s => document.querySelector(s);
 let lastResult = null;
 
 $("#code").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+$("#go").addEventListener("click", go);
 
 async function go() {
   const code = $("#code").value.trim();
@@ -152,9 +153,9 @@ function render(r) {
   </div>
 
   <div class="grid4">
-    <div class="layer"><div class="name">3C 哲学 <span>${num(s["3c"])}</span></div><div class="bar"><i style="width:${s["3c"]*10}%"></i></div><div class="w">周期 / 逆向 / 风控</div></div>
-    <div class="layer"><div class="name">3D 驱动 <span>${num(s["3d"])}</span></div><div class="bar"><i style="width:${s["3d"]*10}%"></i></div><div class="w">价值 / 变化 / 情绪</div></div>
-    <div class="layer"><div class="name">5M 价值 <span>${num(s["5m"])}</span></div><div class="bar"><i style="width:${s["5m"]*10}%"></i></div><div class="w">市场 / 份额 / 盈利 / 模式 / ROE</div></div>
+    <div class="layer"><div class="name">3C 哲学 <span>${num(s["3c"])}</span></div><div class="bar"><i style="width:${s["3c"]*10}%"></i></div><div class="w">周期 / 变化 / 确定性</div></div>
+    <div class="layer"><div class="name">3D 驱动 <span>${num(s["3d"])}</span></div><div class="bar"><i style="width:${s["3d"]*10}%"></i></div><div class="w">价值为本 / 变化为机 / 情绪为用</div></div>
+    <div class="layer"><div class="name">5M 价值 <span>${num(s["5m"])}</span></div><div class="bar"><i style="width:${s["5m"]*10}%"></i></div><div class="w">市场 / 份额 / 利润率 / 模式 / 团队</div></div>
     <div class="layer"><div class="name">3T 时间 <span>${num(s["3t"])}</span></div><div class="bar"><i style="width:${s["3t"]*10}%"></i></div><div class="w">短期 / 中期 / 长期</div></div>
   </div>
 
@@ -163,19 +164,19 @@ function render(r) {
     <div class="sub-grid">
       <div class="sub-item"><div class="k">M1 目标市场</div><div class="v">${num(s.m1)}</div><div class="d">营收增速 ${pctLabel(hRevYoy(r))}</div></div>
       <div class="sub-item"><div class="k">M2 市场份额</div><div class="v">${num(s.m2)}</div><div class="d">增速扩张</div></div>
-      <div class="sub-item"><div class="k">M3 盈利质量</div><div class="v">${num(s.m3)}</div><div class="d">利润率</div></div>
+      <div class="sub-item"><div class="k">M3 利润率</div><div class="v">${num(s.m3)}</div><div class="d">OPM</div></div>
       <div class="sub-item"><div class="k">M4 商业模式</div><div class="v">${num(s.m4)}</div><div class="d">净利率/负债</div></div>
-      <div class="sub-item"><div class="k">M5 财务质量 ROE</div><div class="v">${num(s.m5)}</div><div class="d">${r.financials && r.financials[0] ? "ROE " + num(r.financials[0].roe) + "%" : ""}</div></div>
+      <div class="sub-item"><div class="k">M5 管理团队</div><div class="v">${num(s.m5)}</div><div class="d">执行力/治理</div></div>
     </div>
   </div>
 
   <div class="card">
     <h3>3D 驱动拆解</h3>
     <div class="sub-grid">
-      <div class="sub-item"><div class="k">D1 价值（内延成长）</div><div class="v">${num(s.d1)}</div><div class="d">= M5 ROE</div></div>
-      <div class="sub-item"><div class="k">D2 变化（外延）</div><div class="v">${num(s.d2)}</div><div class="d">增速/结构</div></div>
-      <div class="sub-item"><div class="k">D3 情绪/估值</div><div class="v">${num(s.d3)}</div><div class="d">PE分位 ${pctLabel(h.pe_pct_3y)}</div></div>
-      <div class="sub-item"><div class="k">3C 逆向</div><div class="v">${num(s["3c"])}</div><div class="d">周期定位</div></div>
+      <div class="sub-item"><div class="k">D1 价值为本（内延）</div><div class="v">${num(s.d1)}</div><div class="d">ROE 内生成长</div></div>
+      <div class="sub-item"><div class="k">D2 变化为机（外延）</div><div class="v">${num(s.d2)}</div><div class="d">增速/结构</div></div>
+      <div class="sub-item"><div class="k">D3 情绪为用（估值）</div><div class="v">${num(s.d3)}</div><div class="d">PE分位 ${pctLabel(h.pe_pct_3y)}</div></div>
+      <div class="sub-item"><div class="k">3C 确定性</div><div class="v">${num(s["3c"])}</div><div class="d">周期/变化/确定性</div></div>
       <div class="sub-item"><div class="k">风控仓位</div><div class="v">${r.max_position}%</div><div class="d">单票上限</div></div>
     </div>
   </div>

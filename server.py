@@ -342,7 +342,7 @@ def get_financials(code, market="A"):
 # ---------- 3D3C3T5M 评分引擎 ----------
 
 def score_roe(fins):
-    """M5/核心: ROE 水平+趋势+稳定性"""
+    """D1 价值为本: ROE 水平+趋势+稳定性 (内延成长, 匀速跑)"""
     roes = [f["roe"] for f in fins[:12] if f.get("roe") is not None]
     if not roes:
         return 5.0, None
@@ -438,7 +438,7 @@ def score_share(fins):
 
 
 def score_opm(fins):
-    """M3 盈利质量: 营业利润率/净利率"""
+    """M3 利润率(OPM): 营业利润率/净利率"""
     if not fins:
         return 5.0
     op = fins[0].get("op_margin")
@@ -466,19 +466,76 @@ def score_time(fins, hist):
     return round(t1, 1), round(t2, 1), round(t3, 1)
 
 
-def score_cycle(hist, fins):
-    """3C 哲学: Cycle(周期/估值分位) + Contrarian(逆向) + Control(风控)"""
+def score_management(fins):
+    """M5 管理团队: 营收增速稳定性(执行力) + ROE水平(资本配置) + 低负债(治理审慎)"""
+    if not fins:
+        return 5.0
+    score = 5.0
+    # 执行力: 营收增速持续为正
+    rev_yoy = [f["rev_yoy"] for f in fins[:8] if f.get("rev_yoy") is not None]
+    if rev_yoy:
+        pos = sum(1 for r in rev_yoy if r > 0)
+        score += clamp(pos / len(rev_yoy) * 2.0 - 1.0, -1.5, 2.0)
+    # 资本配置能力: ROE水平
+    roe = fins[0].get("roe")
+    if roe is not None:
+        score += clamp((roe - 10) / 5.0, -2.0, 2.0)
+    # 治理审慎: 低负债
+    debt = fins[0].get("debt_ratio")
+    if debt is not None:
+        score += clamp((45 - debt) / 20.0, -1.5, 1.5)
+    return round(clamp(score), 1)
+
+
+def score_3c(hist, fins):
+    """3C 哲学: Cycle(周期) + Change(变化) + Certainty(确定性)"""
+    # C1 Cycle: 估值分位判断周期位置
     pct = hist.get("pe_pct_3y") if hist.get("pe_pct_3y") is not None else hist.get("pb_pct_3y")
-    score = 10.0
+    c_cycle = 5.0
     if pct is not None:
-        score -= (pct - 50) / 50 * 3.0
-    reverse_bonus = 0.0
-    np_yoy = fins[0].get("np_yoy") if fins else None
-    if pct is not None and pct < 30 and np_yoy is not None and np_yoy > 0:
-        reverse_bonus = 1.5
-    elif pct is not None and pct > 80:
-        reverse_bonus = -2.0
-    return round(clamp(score + reverse_bonus), 1)
+        c_cycle += clamp((50 - pct) / 15.0, -3.0, 3.0)
+    # C2 Change: 基本面变化(增速+毛利率)
+    c_change = 5.0
+    if fins:
+        np_yoy = fins[0].get("np_yoy")
+        rev_yoy = fins[0].get("rev_yoy")
+        if np_yoy is not None and np_yoy > 0:
+            c_change += 1.5
+        elif np_yoy is not None and np_yoy < 0:
+            c_change -= 1.0
+        if rev_yoy is not None and rev_yoy > 0:
+            c_change += 1.0
+        gm = [f["gross_margin"] for f in fins[:4] if f.get("gross_margin") is not None]
+        if len(gm) >= 2:
+            c_change += clamp((gm[0] - gm[-1]) / 5.0, -1.0, 1.0)
+    # C3 Certainty: ROE稳定性 + 盈利确定性 + 低负债
+    c_certainty = 5.0
+    if fins:
+        roes = [f["roe"] for f in fins[:8] if f.get("roe") is not None]
+        if roes:
+            if roes[0] >= 15:
+                c_certainty += 2.0
+            elif roes[0] >= 10:
+                c_certainty += 1.0
+            elif roes[0] < 5:
+                c_certainty -= 1.5
+            if len(roes) >= 4:
+                sd = statistics.pstdev(roes[:4])
+                if sd < 3:
+                    c_certainty += 1.5
+                elif sd < 6:
+                    c_certainty += 0.5
+                else:
+                    c_certainty -= 0.5
+        debt = fins[0].get("debt_ratio")
+        if debt is not None:
+            if debt < 40:
+                c_certainty += 1.5
+            elif debt < 60:
+                c_certainty += 0.5
+            else:
+                c_certainty -= 0.5
+    return round(clamp(0.34 * c_cycle + 0.33 * c_change + 0.33 * c_certainty), 1)
 
 
 def structural_opportunity(fins, hist):
@@ -543,11 +600,11 @@ def analyze(code):
     m2 = score_share(fins)
     m3 = score_opm(fins)
     m4 = score_business(fins)
-    m5, roe_now = score_roe(fins)
+    m5 = score_management(fins)
     score_5m = 0.20 * m1 + 0.20 * m2 + 0.20 * m3 + 0.20 * m4 + 0.20 * m5
 
     # 3D
-    d1 = m5
+    d1, roe_now = score_roe(fins)
     d2, growth_signals = score_growth(fins)
     d3 = score_sentiment(hist)
     score_3d = 0.40 * d1 + 0.35 * d2 + 0.25 * d3
@@ -557,7 +614,7 @@ def analyze(code):
     score_3t = 0.25 * t1 + 0.35 * t2 + 0.40 * t3
 
     # 3C
-    c_score = score_cycle(hist, fins)
+    c_score = score_3c(hist, fins)
 
     total = round(clamp(0.15 * c_score + 0.30 * score_3d + 0.40 * score_5m + 0.15 * score_3t), 1)
     signal, advice = signal_from_score(total)
